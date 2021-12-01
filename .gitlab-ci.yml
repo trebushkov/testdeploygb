@@ -1,0 +1,65 @@
+image: docker:latest
+
+services:
+  - docker:dind
+
+variables:
+  MAVEN_OPTS: "-Dhttps.protocols=TLSv1.2 -Dmaven.repo.local=.m2/repository -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=WARN -Dorg.slf4j.simpleLogger.showDateTime=true -Djava.awt.headless=true"
+  MAVEN_CLI_OPTS: "--batch-mode --errors --fail-at-end"
+  DOCKER_DRIVER: overlay2
+  DOCKER_TLS_CERTDIR: ""
+  REPOSITORY_URL: some/some
+  EC2_HOST: 185.154.52.214
+
+# Cache the Maven repository so that each job does not have to download it.
+cache:
+  key: mavenrepo
+  paths:
+    - ./.m2/repository/
+    - target/
+
+stages:
+  - build
+  - deploy
+
+# Checkstyle source code standard review.
+checkstyle:
+  image: maven:3.6.1-jdk-11
+  stage: build
+  script:
+    - 'mvn $MAVEN_CLI_OPTS checkstyle:check'
+  tags:
+    - docker
+
+# Run tests.
+build:
+  image: maven:3.6.1-jdk-11
+  stage: build
+  script:
+    - 'mvn $MAVEN_CLI_OPTS clean install'
+  tags:
+    - docker
+
+deploy:
+  stage: deploy
+  before_script:
+    - IMAGE_TAG="$(echo $CI_COMMIT_SHA | head -c 8)"
+    - IMAGE_TAG_LATEST="latest"
+    - docker login --username some --password 9b80c131-1357-4173-86ad-2b542e4b3b6b
+  script:
+    - echo "Building image..."
+    - docker build -t $REPOSITORY_URL:$IMAGE_TAG_LATEST .
+    - echo "Tagging image..."
+    - docker tag $REPOSITORY_URL:$IMAGE_TAG_LATEST $REPOSITORY_URL:$IMAGE_TAG
+    - echo "Pushing image..."
+    - docker push $REPOSITORY_URL:$IMAGE_TAG_LATEST
+    - docker push $REPOSITORY_URL:$IMAGE_TAG
+  after_script:
+    - apk add openssh-client
+    - chmod 400 some
+    - scp -o StrictHostKeyChecking=no -i some docker-compose.yml root@$EC2_HOST:~/
+    - ssh -o StrictHostKeyChecking=no -i some root@$EC2_HOST 'sudo docker-compose pull && sudo docker-compose up -d --force-recreate'
+  tags:
+    - docker
+  only:
+    - master

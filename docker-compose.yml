@@ -1,0 +1,63 @@
+version: '3'
+
+volumes:
+  postgres_data:
+    driver: local
+  esdata:
+    driver: local
+
+networks:
+  app-net:
+    driver: bridge
+
+services:
+  db:
+    image: "postgres:11.8-alpine"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: test
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: root
+    networks:
+      - app-net
+
+#  elasticsearch:
+#    image: "docker.elastic.co/elasticsearch/elasticsearch:7.9.3"
+#    ports:
+#      - "9200:9200"
+#      - "9300:9300"
+#    volumes:
+#      - esdata:/usr/share/elasticsearch/data
+#    environment:
+#      ES_HEAP_SIZE: 200m
+#      ES_JAVA_OPTS: '-Xms256m -Xmx256m'
+#      discovery.type: single-node
+#    mem_limit: 400m
+#    networks:
+#      - app-net
+
+#  app:
+#    image: some/some:latest
+#    ports:
+#      - "9000:8085"
+#    environment:
+#      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/app
+#      SPRING_DATASOURCE_USERNAME: postgres
+#      SPRING_DATASOURCE_PASSWORD: 123
+#      ELASTIC_SEARCH_HOST: elasticsearch
+#      ELASTIC_SEARCH_PORT: 9200
+#      JAVA_OPTS: -Xmx512m -Dspring.profiles.active=dev
+#      POSTGRES_DB: app
+#      POSTGRES_USER: postgres
+#      POSTGRES_PASSWORD: 123
+#      POSTGRES_HOST: localhost
+#      POSTGRES_PORT: 5432
+#      APPLICATION_PORT: 8085
+#    depends_on:
+#      - db
+#      - elasticsearch
+#    networks:
+#      - app-net
