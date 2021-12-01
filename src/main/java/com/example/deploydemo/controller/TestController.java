@@ -14,7 +14,7 @@ public class TestController {
     //TODO: bad style
     private final TestRepository testRepository;
 
-    @RequestMapping(method = RequestMethod.POST, value = "/api/v1/test")
+    @RequestMapping(method = RequestMethod.GET, value = "/api/v1/test")
     public String test() {
         return testRepository.findAll().stream().findAny().map(Test::getName).orElse(null);
     }
